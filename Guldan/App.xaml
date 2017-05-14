@@ -5,6 +5,18 @@
              Startup="PerformStartup"
              ShutdownMode="OnExplicitShutdown">
     <Application.Resources>
-         
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Resources/Styles/Common.xaml"></ResourceDictionary>
+                <ResourceDictionary Source="/Resources/Styles/IconGlyphVectors.xaml"></ResourceDictionary>
+                <ResourceDictionary Source="/Resources/Styles/SplitViewStyles.xaml"></ResourceDictionary>
+                <ResourceDictionary Source="/Resources/Styles/Button.Light.Styles.xaml"></ResourceDictionary>
+                <ResourceDictionary Source="/Resources/Styles/Button.Dark.Styles.xaml"></ResourceDictionary>
+                <ResourceDictionary Source="/Resources/Styles/ListBoxStyles.xaml"></ResourceDictionary>
+                <ResourceDictionary Source="/Resources/Styles/ExpanderStylesExpanderStyles.xaml"></ResourceDictionary>
+                <ResourceDictionary Source="/Resources/Styles/CheckBoxStyles.xaml"></ResourceDictionary>
+                <ResourceDictionary Source="/Resources/SystemTrayMenu.xaml"></ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -1,11 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Configuration;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using Guldan.Models;
+using Guldan.Services;
 using Microsoft.Shell;
+using Shadowsocks;
 
 namespace Guldan
 {
@@ -31,12 +35,46 @@ namespace Guldan
             }
         }
 
-        private void PerformStartup(object sender, StartupEventArgs e)
+        private async void PerformStartup(object sender, StartupEventArgs e)
         {
+            var screen = new SplashScreen("Resources/Images/startup.png");
+            screen.Show(false, true);
 
-            SplashScreen screen = new SplashScreen("Resources/Images/startup.png");
-            screen.Show(true, true);
-            new MainWindow().Show();
+
+            ServiceInjector.InjectServices();
+            var svc = new WarlockService();
+            svc.Load();
+            ServiceManager.Instance.AddService<Services.Interfaces.IWarlockService>(svc);
+            if (svc.Servers == null)
+            {
+                svc.Servers = new ObservableCollection<Server>(new []{ new Server() });
+                screen.Close(TimeSpan.FromSeconds(1));
+                MainWindowViewModel.Instance.ShowMainWindow();
+            }
+            else
+            {
+                if (svc.Servers.Any(c => c.enabled))
+                {
+                    try
+                    {
+                        MainWindowViewModel.Instance.Status = Status.Busy;
+                        await svc.StartAll().ConfigureAwait(true);
+                        MainWindowViewModel.Instance.Status = Status.Ready;
+                    }
+                    catch (Exception ex)
+                    {
+                        MainWindowViewModel.Instance.Status = Status.Disabled;
+                        Logging.LogUsefulException(ex);
+                    }
+                    screen.Close(TimeSpan.Zero);
+                    MainWindowViewModel.Instance.MinimizeToTray();
+                }
+                else
+                {
+                    screen.Close(TimeSpan.Zero);
+                    MainWindowViewModel.Instance.ShowMainWindow();
+                }
+            }
         }
 
         #region ISingleInstanceApp Members

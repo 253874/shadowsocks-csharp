@@ -1,0 +1,20 @@
+﻿<UserControl x:Class="Guldan.Views.LabelTextBox"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" >
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition MinWidth="20"
+                              Width="0.3*" />
+            <ColumnDefinition MinWidth="100"
+                              Width="0.7*" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Name="txtHeader" Text="面白い" Grid.Column="0" Margin="1,0,1,0" HorizontalAlignment="Right" VerticalAlignment="Center"  />
+        <TextBox Name="txtContent" Grid.Column="1" Margin="1,0,1,0" VerticalContentAlignment="Center" Text="" PreviewTextInput="TxtContent_OnPreviewTextInput" DataObject.Pasting="TxtContent_OnPasting" TextChanged="TxtContent_OnTextChanged">
+            <TextBox.Effect>
+                <BlurEffect x:Name="BlurEffect" Radius="0" KernelType="Box" />
+            </TextBox.Effect>
+        </TextBox>
+    </Grid>
+</UserControl>

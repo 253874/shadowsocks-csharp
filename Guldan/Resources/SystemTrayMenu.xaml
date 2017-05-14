@@ -1,0 +1,26 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:TaskbarNotification="clr-namespace:Hardcodet.Wpf.TaskbarNotification;assembly=Hardcodet.Wpf.TaskbarNotification"
+                    xmlns:Converters="clr-namespace:Guldan.Converters"
+                    xmlns:local="clr-namespace:Guldan.Resources">
+    <ContextMenu x:Shared="True" FontFamily="{DynamicResource UIFont}" Placement="AbsolutePoint" x:Key="SystemTrayMenu">
+        <MenuItem Header="Show" Command="{Binding AppCommand}" CommandParameter="show" />
+        <MenuItem Header="About" Command="{Binding AppCommand}" CommandParameter="about" />
+        <Separator />
+        <MenuItem Header="Exit" Command="{Binding AppCommand}" CommandParameter="exit" />
+    </ContextMenu>
+
+
+    <!-- the taskbar icon  -->
+    <TaskbarNotification:TaskbarIcon
+        x:Key="TrayIcon"
+        ToolTipText="Shadowfucks"
+        MenuActivation="RightClick"
+        DoubleClickCommand="{Binding AppCommand}"
+        DoubleClickCommandParameter="show"
+        IconSource="{Binding Path=Status, Converter={Converters:SummaryStatusConverter}, ConverterParameter=TrayIcon}">
+        <TaskbarNotification:TaskbarIcon.TrayToolTip>
+            <local:SysTrayToolTip></local:SysTrayToolTip>
+        </TaskbarNotification:TaskbarIcon.TrayToolTip>
+    </TaskbarNotification:TaskbarIcon>
+</ResourceDictionary>

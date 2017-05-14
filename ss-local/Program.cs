@@ -62,8 +62,9 @@ namespace ss_local
                 return;
             }
 
-            using (Warlock.Affliction(server, server_port, password, method, auth, local, local_port))
+            using (var ss = Warlock.Affliction(server, server_port, password, method, auth, local, local_port))
             {
+                ss.Start();
                 while (true)
                 {
                     Console.WriteLine("Input \'exit\' or \'quit\' to quit");

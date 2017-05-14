@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32.SafeHandles;
 using Shadowsocks.Encryption;
@@ -30,18 +31,54 @@ namespace Shadowsocks
         }
 
         internal Listener listener;
+        internal CancellationTokenSource cts;
+        internal Task Runner;
         public void Start()
         {
-            listener?.Start();
-            //var tmr = new System.Threading.Timer(state => Utils.ReleaseMemory(),null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30));
-            ChangeBackgroundProcessing(false, true);
+            cts = new CancellationTokenSource();
+            Runner = Task.Run(() =>
+            {
+                listener?.Start();
+                ChangeBackgroundProcessing(false, true);
+                var count = 0;
+                while (count<100)
+                {
+                    Thread.Sleep(500);
+                    if (count >= 60)
+                    {
+                        count = 0;
+                        Utils.ReleaseMemory();
+                    }                    
+                    if (cts.Token.IsCancellationRequested)
+                    {
+                        listener?.Stop();
+                        try
+                        {
+                            ChangeBackgroundProcessing(false, false);
+                        }
+                        catch (Exception e)
+                        {
+                            Logging.LogUsefulException(e);//TODO WTF???
+                        }
+                        break;
+                    }
+                    count++;
+                }
+            }, cts.Token);
+            
+        }
+
+        public void Stop()
+        {
+            cts?.Cancel(false);
+            Runner?.Wait();
+            Runner?.Dispose();
         }
 
         public void Dispose()
         {
-            listener?.Stop();
+            Stop();
             Utils.ReleaseMemory();
-            ChangeBackgroundProcessing(false, false);
         }
 
         private static void ChangeBackgroundProcessing(bool process, bool start)
@@ -83,7 +120,6 @@ namespace Shadowsocks
         {
             var saba = new Saba(server, server_port, password, method, auth);
             listener = new Listener(local_ip,local_port,saba.Relay);
-            Start();
         }
     }
 }
