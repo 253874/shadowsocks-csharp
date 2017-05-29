@@ -1,15 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Configuration;
-using System.Data;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Windows;
-using Guldan.Models;
+﻿using Guldan.Models;
 using Guldan.Services;
 using Microsoft.Shell;
 using Shadowsocks;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Windows;
+using System.Windows.Threading;
 
 namespace Guldan
 {
@@ -18,6 +16,12 @@ namespace Guldan
     /// </summary>
     public partial class App : Application, ISingleInstanceApp
     {
+        public App() : base()
+        {
+            Dispatcher.UnhandledException += OnDispatcherUnhandledException;
+            AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+        }
+
         private const string UniqueName = @"3021e68df9a7200135725c6331369a22";
         private static App _application;
 
@@ -40,6 +44,7 @@ namespace Guldan
             var screen = new SplashScreen("Resources/Images/startup.png");
             screen.Show(false, true);
 
+            Current.DispatcherUnhandledException += AppDispatcherUnhandledException;
 
             ServiceInjector.InjectServices();
             var svc = new WarlockService();
@@ -47,8 +52,14 @@ namespace Guldan
             ServiceManager.Instance.AddService<Services.Interfaces.IWarlockService>(svc);
             if (svc.Servers == null)
             {
-                svc.Servers = new ObservableCollection<Server>(new []{ new Server() });
+                svc.Servers = new ObservableCollection<Server>(new[] { new Server() });
                 screen.Close(TimeSpan.FromSeconds(1));
+                MainWindowViewModel.Instance.ShowMainWindow();
+            }
+            else if (svc.Servers.Count == 0)
+            {
+                svc.Servers = new ObservableCollection<Server>(new[] { new Server() });
+                screen.Close(TimeSpan.Zero);
                 MainWindowViewModel.Instance.ShowMainWindow();
             }
             else
@@ -76,6 +87,54 @@ namespace Guldan
                 }
             }
         }
+
+        #region Error
+
+        private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            string errorMessage = $"0:An unhandled exception occurred: {e.ExceptionObject as Exception}";
+            //MessageBox.Show(errorMessage, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            WriteLog(errorMessage);
+        }
+
+        void AppDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+        {
+            string errorMessage = $"1:An unhandled exception occurred: {e.Exception}";
+            //MessageBox.Show(errorMessage, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            WriteLog(errorMessage);
+            e.Handled = true;
+        }
+        void OnDispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+        {
+            string errorMessage = $"2:An unhandled exception occurred: {e.Exception}";
+            //MessageBox.Show(errorMessage, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            WriteLog(errorMessage);
+            e.Handled = true;
+        }
+
+        public static void WriteLog(string strLog)
+        {
+#if DEBUG
+            string sFileName = DateTime.Now.ToString("yyyyMMdd") + ".log";
+            FileStream fs;
+            StreamWriter sw;
+            if (File.Exists(sFileName))
+            {
+                fs = new FileStream(sFileName, FileMode.Append, FileAccess.Write);
+            }
+            else
+            {
+                fs = new FileStream(sFileName, FileMode.Create, FileAccess.Write);
+            }
+            sw = new StreamWriter(fs);
+            sw.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss") + "   ---   " + strLog);
+            sw.Close();
+            fs.Close();
+#endif
+        }
+
+
+        #endregion
 
         #region ISingleInstanceApp Members
 

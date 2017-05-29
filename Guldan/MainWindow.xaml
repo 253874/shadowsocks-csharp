@@ -13,6 +13,9 @@
         ResizeMode="CanResize" Icon="Resources/Icons/shadowfucks.ico"
         mc:Ignorable="d" Title="{Binding Title}" Height="500" Width="813">
     <wpfSpark:SparkWindow.Resources>
+        <Style x:Key="{x:Type ToolTip}" TargetType="{x:Type ToolTip}">
+            <Setter Property="FontFamily" Value="{StaticResource UIFont}"/>
+        </Style>
         <wpfSpark:ContentVisibilityConverter x:Key="ContentVisibilityHelper" />
         <wpfSpark:BooleanToVisibilityConverter x:Key="BooleanToVisibilityHelper" />
         <wpfSpark:BooleanToVisibilityConverter x:Key="BooleanToVisibilityNegationHelper" IsReverse="True" />
@@ -60,7 +63,7 @@
                             Style="{DynamicResource IconGlyph.Light.ButtonStyle}" ToolTip="{Binding DummyTitle,Mode=OneTime, Converter={StaticResource i18n}, ConverterParameter=Delete}" />
                 </StackPanel>
                 <StackPanel Grid.Column="2" HorizontalAlignment="Right" Orientation="Horizontal">
-                    <!--<Button Content="Save.Glyph" Width="48" Height="48" Style="{DynamicResource IconGlyph.Light.ButtonStyle}" ToolTip="Add New Value" />-->
+                    <Button Content="Reverse.Glyph" Width="48" Height="48" Style="{DynamicResource IconGlyph.Light.ButtonStyle}" Command="{Binding ClipboardCommand}" CommandParameter="paste" ToolTip="{Binding DummyTitle,Mode=OneTime, Converter={StaticResource i18n}, ConverterParameter=ReadClipboard}" />
                 </StackPanel>
             </Grid>
             <Grid x:Name="ServerBody" Row="1">
@@ -115,10 +118,10 @@
                                               Width="*" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Orientation="Vertical" Margin="0,10,0,10.5" HorizontalAlignment="Left" Width="266">
-                            <Views:LabelTextBox Height="25" Margin="5" Header="{Binding DummyTitle,Mode=OneTime, Converter={StaticResource i18n}, ConverterParameter=Server}" Value="{Binding SelectedServer.server,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
-                            <Views:LabelTextBox Height="25" Margin="5" Header="{Binding DummyTitle,Mode=OneTime, Converter={StaticResource i18n}, ConverterParameter=Port}" Value="{Binding SelectedServer.server_port,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" IsOnlyDigital="True"/>
+                            <Views:LabelTextBox Height="25" Margin="5" Header="{Binding DummyTitle,Mode=OneTime, Converter={StaticResource i18n}, ConverterParameter=Server}" Value="{Binding SelectedServer.server,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" IsProtected="True"/>
+                            <Views:LabelTextBox Height="25" Margin="5" Header="{Binding DummyTitle,Mode=OneTime, Converter={StaticResource i18n}, ConverterParameter=Port}" Value="{Binding SelectedServer.server_port,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" IsDigitalOnly="True"/>
                             <Views:LabelTextBox Height="25" Margin="5" Header="{Binding DummyTitle,Mode=OneTime, Converter={StaticResource i18n}, ConverterParameter=LocalAddr}" Value="{Binding SelectedServer.local,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
-                            <Views:LabelTextBox Height="25" Margin="5" Header="{Binding DummyTitle,Mode=OneTime, Converter={StaticResource i18n}, ConverterParameter=LocalPort}" Value="{Binding SelectedServer.local_port,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" IsOnlyDigital="True"/>
+                            <Views:LabelTextBox Height="25" Margin="5" Header="{Binding DummyTitle,Mode=OneTime, Converter={StaticResource i18n}, ConverterParameter=LocalPort}" Value="{Binding SelectedServer.local_port,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" IsDigitalOnly="True"/>
                             <Views:LabelTextBox Height="25" Margin="5" Header="{Binding DummyTitle,Mode=OneTime, Converter={StaticResource i18n}, ConverterParameter=Password}" Value="{Binding SelectedServer.password,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}" IsPassword="True"/>
                             <Grid Height="25" Margin="5">
                                 <Grid.ColumnDefinitions>
@@ -151,7 +154,15 @@
                                 </StackPanel>
                             </Grid>
                         </StackPanel>
-                        <Image Grid.Column="1" Margin="20" HorizontalAlignment="Left" VerticalAlignment="Top" Source="{Binding SelectedServer.QRCode}"  Visibility="{Binding ElementName=SwitchQR,Path=IsChecked,Converter={StaticResource BooleanToVisibilityHelper}}" />
+                        <Image Grid.Column="1" Margin="20" HorizontalAlignment="Left" VerticalAlignment="Top" Source="{Binding SelectedServer.QRCode}"  Visibility="{Binding ElementName=SwitchQR,Path=IsChecked,Converter={StaticResource BooleanToVisibilityHelper}}">
+                            <Image.ContextMenu>
+                                <ContextMenu Name="ctxMenuImage" FontFamily="{StaticResource UIFont}">
+                                    <MenuItem Command="{Binding ClipboardCommand}" CommandParameter="copytext" Header="{Binding DummyTitle,Mode=OneTime, Converter={StaticResource i18n}, ConverterParameter=CopyText}"/>
+                                    <MenuItem Command="{Binding ClipboardCommand}" CommandParameter="copyimage" Header="{Binding DummyTitle,Mode=OneTime, Converter={StaticResource i18n}, ConverterParameter=CopyImage}"/>
+                                    <MenuItem Command="{Binding ClipboardCommand}" CommandParameter="paste" Header="{Binding DummyTitle,Mode=OneTime, Converter={StaticResource i18n}, ConverterParameter=ReadClipboard}"/>
+                                </ContextMenu>
+                            </Image.ContextMenu>
+                        </Image>
                     </Grid>
                     <Grid Grid.Row="1">
                         <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">

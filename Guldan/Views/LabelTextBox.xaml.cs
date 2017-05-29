@@ -1,18 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Media.Effects;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace Guldan.Views
 {
@@ -77,22 +68,74 @@ namespace Guldan.Views
 
         void OnValueChanged(string oldValue, string newValue)
         {
-            txtContent.Text = newValue;
+            if (IsDigitalOnly)
+            {
+                if (int.TryParse(newValue, out int port))
+                {//bla bla bla bla
+                    if (port < 1 || port > 65535)
+                    {
+                        Value = txtContent.Text = oldValue;
+                        txtContent.SelectionStart = Value.Length;
+                        return;
+                    }
+                }
+            }
+            if (txtPasswordbox.Password != newValue)
+                txtPasswordbox.Password = newValue;
+            if (txtContent.Text != newValue)
+                txtContent.Text = newValue;
+        }
+
+        #endregion
+
+        #region IsPassword
+
+        public static readonly DependencyProperty IsPasswordProperty =
+            DependencyProperty.Register("IsPassword", typeof(bool), typeof(LabelTextBox),
+                new PropertyMetadata(false, OnIsPasswordChanged));
+
+        public bool IsPassword
+        {
+            get => (bool)GetValue(IsPasswordProperty);
+            set => SetValue(IsPasswordProperty, value);
+        }
+
+        private static void OnIsPasswordChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        {
+            var ctrl = (LabelTextBox)d;
+            var oldHeader = (bool)e.OldValue;
+            var newHeader = ctrl.IsPassword;
+            ctrl.OnIsPasswordChanged(oldHeader, newHeader);
+        }
+
+        void OnIsPasswordChanged(bool oldValue, bool newValue)
+        {
+            if (newValue)
+            {
+                txtContent.Visibility = Visibility.Hidden;
+                txtPasswordbox.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                txtContent.Visibility = Visibility.Visible;
+                txtPasswordbox.Visibility = Visibility.Hidden;
+            }
         }
 
         #endregion
 
         #endregion
 
-        private bool _isPassword;
+        public bool IsDigitalOnly { get; set; }
 
-        public bool IsPassword
+        private bool _isProtected;
+        public bool IsProtected
         {
-            get => _isPassword;
+            get => _isProtected;
             set
             {
-                _isPassword = value;
-                if (_isPassword)
+                _isProtected = value;
+                if (_isProtected)
                 {
                     BlurEffect.Radius = 4;
                     txtContent.GotFocus += UIElement_OnGotFocus;
@@ -107,7 +150,6 @@ namespace Guldan.Views
             }
         }
 
-        public bool IsOnlyDigital { get; set; }
         private async void UIElement_OnGotFocus(object sender, RoutedEventArgs e)
         {
             var ui = sender as UIElement;
@@ -154,7 +196,7 @@ namespace Guldan.Views
 
         private bool IsTextAllowed(string text)
         {
-            if (IsOnlyDigital)
+            if (IsDigitalOnly)
             {
                 return Array.TrueForAll(text.ToCharArray(),
                     c => char.IsDigit(c) || char.IsControl(c));
@@ -164,7 +206,114 @@ namespace Guldan.Views
 
         private void TxtContent_OnTextChanged(object sender, TextChangedEventArgs e)
         {
-            Value = txtContent.Text;
+            if (!IsPassword)
+                Value = txtContent.Text;
+        }
+
+        private void TxtPasswordbox_OnPasswordChanged(object sender, RoutedEventArgs e)
+        {
+            if (IsPassword)
+                Value = txtPasswordbox.Password;
+        }
+
+        private void TxtPasswordbox_OnPreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.C && Keyboard.IsKeyDown(Key.LeftCtrl) || e.Key == Key.C && Keyboard.IsKeyDown(Key.RightCtrl))
+            {
+                e.Handled = true;
+                Clipboard.SetText(Value);
+            }
         }
     }
+
+
+    #region PwdHelper
+    public static class PasswordHelper
+    {
+        public static readonly DependencyProperty PasswordProperty =
+            DependencyProperty.RegisterAttached("Password",
+                typeof(string), typeof(PasswordHelper),
+                new FrameworkPropertyMetadata(string.Empty, OnPasswordPropertyChanged));
+
+        public static readonly DependencyProperty AttachProperty =
+            DependencyProperty.RegisterAttached("Attach",
+                typeof(bool), typeof(PasswordHelper), new PropertyMetadata(false, Attach));
+
+        private static readonly DependencyProperty IsUpdatingProperty =
+            DependencyProperty.RegisterAttached("IsUpdating", typeof(bool),
+                typeof(PasswordHelper));
+
+
+        public static void SetAttach(DependencyObject dp, bool value)
+        {
+            dp.SetValue(AttachProperty, value);
+        }
+
+        public static bool GetAttach(DependencyObject dp)
+        {
+            return (bool)dp.GetValue(AttachProperty);
+        }
+
+        public static string GetPassword(DependencyObject dp)
+        {
+            return (string)dp.GetValue(PasswordProperty);
+        }
+
+        public static void SetPassword(DependencyObject dp, string value)
+        {
+            dp.SetValue(PasswordProperty, value);
+        }
+
+        private static bool GetIsUpdating(DependencyObject dp)
+        {
+            return (bool)dp.GetValue(IsUpdatingProperty);
+        }
+
+        private static void SetIsUpdating(DependencyObject dp, bool value)
+        {
+            dp.SetValue(IsUpdatingProperty, value);
+        }
+
+        private static void OnPasswordPropertyChanged(DependencyObject sender,
+            DependencyPropertyChangedEventArgs e)
+        {
+            PasswordBox passwordBox = sender as PasswordBox;
+            if (passwordBox == null) return;
+            passwordBox.PasswordChanged -= PasswordChanged;
+
+            if (!GetIsUpdating(passwordBox))
+            {
+                passwordBox.Password = (string)e.NewValue;
+            }
+            passwordBox.PasswordChanged += PasswordChanged;
+        }
+
+        private static void Attach(DependencyObject sender,
+            DependencyPropertyChangedEventArgs e)
+        {
+            PasswordBox passwordBox = sender as PasswordBox;
+
+            if (passwordBox == null)
+                return;
+
+            if ((bool)e.OldValue)
+            {
+                passwordBox.PasswordChanged -= PasswordChanged;
+            }
+
+            if ((bool)e.NewValue)
+            {
+                passwordBox.PasswordChanged += PasswordChanged;
+            }
+        }
+
+        private static void PasswordChanged(object sender, RoutedEventArgs e)
+        {
+            PasswordBox passwordBox = sender as PasswordBox;
+            SetIsUpdating(passwordBox, true);
+            SetPassword(passwordBox, passwordBox?.Password);
+            SetIsUpdating(passwordBox, false);
+        }
+    }
+    #endregion
 }

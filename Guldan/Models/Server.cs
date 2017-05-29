@@ -1,4 +1,7 @@
-﻿using System;
+﻿using Guldan.Services;
+using Guldan.Services.Interfaces;
+using Shadowsocks;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -9,13 +12,10 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
-using Guldan.Services;
-using Guldan.Services.Interfaces;
-using Shadowsocks;
 
 namespace Guldan.Models
 {
-    public class Server : ObservableObject,IDisposable
+    public class Server : ObservableObject, IDisposable
     {
         public Server()
         {
@@ -67,9 +67,24 @@ namespace Guldan.Models
         [SimpleJson.Ignore]
         public string Identifier { get => _identifier ?? I18N.GetSplitString("Atarashii Saba"); set { _identifier = value; OnPropertyChanged(); } }
 
+        [SimpleJson.Ignore]
+        public bool IsDefault => GetSSUrl() == "ss://YWVzLTI1Ni1jZmI6QDo4Mzg4";
         #endregion
 
         #region methods
+
+        /// <inheritdoc />
+#pragma warning disable 659
+        public override bool Equals(object obj)
+#pragma warning restore 659
+        {
+            return GetSSUrl() == (obj as Server)?.GetSSUrl();
+        }
+
+        public override int GetHashCode()
+        {
+            return GetSSUrl().GetHashCode();
+        }
 
         private void GenerateQR()
         {
@@ -104,7 +119,7 @@ namespace Guldan.Models
 
         private string ToBase64()
         {
-            string parts = method + ":" + password + "@" + server + ":" + server_port;
+            string parts = method + (auth ? "-auth" : "") + ":" + password + "@" + server + ":" + server_port;
             return Convert.ToBase64String(Encoding.UTF8.GetBytes(parts));
         }
 
@@ -236,8 +251,9 @@ namespace Guldan.Models
 
                 string beforeAt = data.Substring(0, indexLastAt);
                 string[] parts = beforeAt.Split(':');
-                method = parts[0];
-                password = beforeAt.Remove(0, method.Length + 1);
+                method = parts[0].Replace("-auth", "");
+                auth = parts[0].EndsWith("-auth");
+                password = beforeAt.Remove(0, parts[0].Length + 1);
 
                 //TODO: read one_time_auth
             }
@@ -249,6 +265,10 @@ namespace Guldan.Models
         private static readonly Regex isbase64 = new Regex("[a-zA-z0-9=]+", RegexOptions.Compiled);
         public static Server[] ParseMultipleServers(string input)
         {
+            if (string.IsNullOrEmpty(input))
+            {
+                return null;
+            }
             var svcs = new List<Server>();
             try
             {
@@ -288,7 +308,7 @@ namespace Guldan.Models
             CheckServer(server.server);
             CheckLocal(server.local);
             CheckPort(server.server_port);
-            CheckLocalPort(server.local_port);
+            //CheckLocalPort(server.local_port);
             CheckPassword(server.password);
             CheckMethod(server.method);
         }
@@ -329,7 +349,7 @@ namespace Guldan.Models
             if (string.IsNullOrEmpty(server))
                 throw new ArgumentException("LocalAddr : Local server cannot be blank");
             if (string.CompareOrdinal(server, "localhost") == 0) return;
-            if(!IPAddress.TryParse(server,out IPAddress ip))
+            if (!IPAddress.TryParse(server, out IPAddress ip))
                 throw new ArgumentException("LocalAddr : Invalid IPAddress");
         }
 

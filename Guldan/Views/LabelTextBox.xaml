@@ -11,10 +11,12 @@
                               Width="0.7*" />
         </Grid.ColumnDefinitions>
         <TextBlock Name="txtHeader" Text="面白い" Grid.Column="0" Margin="1,0,1,0" HorizontalAlignment="Right" VerticalAlignment="Center"  />
-        <TextBox Name="txtContent" Grid.Column="1" Margin="1,0,1,0" VerticalContentAlignment="Center" Text="" PreviewTextInput="TxtContent_OnPreviewTextInput" DataObject.Pasting="TxtContent_OnPasting" TextChanged="TxtContent_OnTextChanged">
+        <TextBox Name="txtContent" Grid.Column="1" Height="20" Margin="1,0,1,0" VerticalContentAlignment="Center" Text="" PreviewTextInput="TxtContent_OnPreviewTextInput" DataObject.Pasting="TxtContent_OnPasting" TextChanged="TxtContent_OnTextChanged">
             <TextBox.Effect>
                 <BlurEffect x:Name="BlurEffect" Radius="0" KernelType="Box" />
             </TextBox.Effect>
         </TextBox>
+        <PasswordBox Grid.Column="1" Visibility="Hidden" Margin="1,0,1,0" Height="20" VerticalContentAlignment="Center" Name="txtPasswordbox" VerticalAlignment="Center" PreviewKeyDown="TxtPasswordbox_OnPreviewKeyDown" PasswordChanged="TxtPasswordbox_OnPasswordChanged" />
+        <!--<Image Grid.Column="1" Visibility="Hidden" Height="20" HorizontalAlignment="Right" Name="ImgShowHide" Stretch="Fill" VerticalAlignment="Top" Width="20" Margin="1" />-->
     </Grid>
 </UserControl>

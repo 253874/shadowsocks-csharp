@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.Globalization;
 using System.IO;
-using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Interop;
+using System.Windows.Media.Imaging;
 
 namespace Guldan
 {
@@ -58,6 +61,27 @@ namespace Guldan
         {
             return SimpleJson.SimpleJson.DeserializeObject<T>(jsonString, new JsonSerializerStrategy());
         }
+        [DllImport("gdi32.dll", SetLastError = true)]
+        private static extern bool DeleteObject(IntPtr hObject);
+        public static BitmapSource ToBitmapSource(this Bitmap bmp)
+        {
+            BitmapSource returnSource;
+            IntPtr hBitmap = IntPtr.Zero;
+            try
+            {
+                hBitmap = bmp.GetHbitmap();
+                returnSource = Imaging.CreateBitmapSourceFromHBitmap(hBitmap, IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+            }
+            catch
+            {
+                returnSource = null;
+            }
+            finally
+            {
+                if (hBitmap != IntPtr.Zero) DeleteObject(hBitmap);
+            }
+            return returnSource;
+        }
     }
 
     #endregion
@@ -91,6 +115,9 @@ namespace Guldan
                 //Head
                 {"new", "新增"},
                 {"duplicate", "复制"},
+                {"copytext", "复制文字"},
+                {"copyimage", "复制图像"},
+                {"readclipboard", "剪贴板读取"},
                 {"delete", "删除"},
                 {"qrcode", "QR码"},
                 {"remark", "备注"},

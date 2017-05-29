@@ -1,20 +1,23 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Guldan.Models;
+using Guldan.Services;
+using Guldan.Services.Interfaces;
+using Guldan.ViewModel;
+using Hardcodet.Wpf.TaskbarNotification;
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Drawing;
+using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
-using Guldan.Models;
-using Guldan.Services;
-using Guldan.Services.Interfaces;
-using Guldan.ViewModel;
-using Hardcodet.Wpf.TaskbarNotification;
-using Shadowsocks;
+using ZXing;
+using ZXing.Common;
+using ZXing.QrCode;
+using Point = System.Windows.Point;
 
 namespace Guldan
 {
@@ -64,7 +67,7 @@ namespace Guldan
 
         #region Title
         private string _title = I18N.GetString("Warlock");
-        public string Title { get => _title; set => SetProperty(ref _title,value); }
+        public string Title { get => _title; set => SetProperty(ref _title, value); }
 
         public string DummyTitle => "Dummy";
 
@@ -80,11 +83,11 @@ namespace Guldan
 
         #region AppModeTitle
         private string _appModeTitle = "Sabisu";
-        public string AppModeTitle { get => _appModeTitle; set => SetProperty(ref _appModeTitle,value); }
+        public string AppModeTitle { get => _appModeTitle; set => SetProperty(ref _appModeTitle, value); }
         #endregion
 
         #region CurrentAppMode
-        private AppMode _currentAppMode = AppMode.Import;
+        private AppMode _currentAppMode = AppMode.Servers;
         public AppMode CurrentAppMode { get => _currentAppMode; set { _currentAppMode = value; OnAppModeChanged(); OnPropertyChanged(); } }
         #endregion
 
@@ -93,7 +96,7 @@ namespace Guldan
         public Status Status { get => _status; set => SetProperty(ref _status, value); }
 
         private string _summaryStatus = "NaN";
-        public string SummaryStatus { get => _summaryStatus; set => SetProperty(ref _summaryStatus,value); }
+        public string SummaryStatus { get => _summaryStatus; set => SetProperty(ref _summaryStatus, value); }
         #endregion
 
         #region TaskbarIcon
@@ -154,7 +157,7 @@ namespace Guldan
             if (app.MainWindow == null)
             {
                 CurrentAppMode = AppMode.Servers;
-                app.MainWindow = new MainWindow {DataContext = Instance};  
+                app.MainWindow = new MainWindow { DataContext = Instance };
                 app.MainWindow.Show();
                 app.MainWindow.Activate();
                 app.MainWindow.Closing += OnMainWindowClosing;
@@ -170,7 +173,7 @@ namespace Guldan
         {
             ((Window)sender).Closing -= OnMainWindowClosing;
             Application.Current.MainWindow = null;
-            CloseMainApplication(!Servers.Any(c=>c.enabled));
+            CloseMainApplication(!Servers.Any(c => c.enabled));
         }
         public void CloseMainApplication(bool Shutdown)
         {
@@ -258,10 +261,10 @@ namespace Guldan
 
             await Task.Run(() =>
             {
-                
+
                 if (Servers.Any())
                 {
-                    var export = Servers.Select(svc => new ImportExportVM
+                    var export = Servers.Where(c => !c.IsDefault).Select(svc => new ImportExportVM
                     {
                         Key = svc.Identifier,
                         Data = svc.GetSSUrl(),
@@ -274,10 +277,53 @@ namespace Guldan
                 {
                     InitExportStatus = I18N.GetSplitString("Nothing can export");
                 }
-                
+
             }).ConfigureAwait(false);
 
             IsBusy = false;
+        }
+
+        private void TrySetClipboard<T>(T content)
+        {
+            try
+            {
+                if (content is string)
+                    Clipboard.SetText(content as string);
+                else if (content is BitmapSource)
+                    Clipboard.SetImage(content as BitmapSource);
+            }
+            catch (Exception e)
+            {
+                _messageService.ShowAsync(e.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async Task TrySetClipboardAsync<T>(T content)
+        {
+            try
+            {
+                if (content is string)
+                    Clipboard.SetText(content as string);
+                else if (content is BitmapSource)
+                    Clipboard.SetImage(content as BitmapSource);
+            }
+            catch (Exception e)
+            {
+                await _messageService.ShowAsync(e.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private Bitmap BitmapFromSource(BitmapSource bitmapsource)
+        {
+            Bitmap bitmap;
+            using (var outStream = new MemoryStream())
+            {
+                BitmapEncoder enc = new BmpBitmapEncoder();
+                enc.Frames.Add(BitmapFrame.Create(bitmapsource));
+                enc.Save(outStream);
+                bitmap = new Bitmap(outStream);
+            }
+            return bitmap;
         }
 
         #endregion
@@ -286,6 +332,7 @@ namespace Guldan
         private ICommand _saveCommand;
         public ICommand SaveCommand => _saveCommand ?? (_saveCommand = new AsyncCommand<string>(async _ =>
         {
+            if (IsBusy) return;
             IsBusy = true;
             try
             {
@@ -299,19 +346,22 @@ namespace Guldan
             IsBusy = false;
         }));
 
-
         private ICommand _importFileCommand;
         public ICommand ImportFileCommand => _importFileCommand ?? (_importFileCommand = new AsyncCommand<string>(async status =>
         {
+            if (IsBusy) return;
             IsBusy = true;
             try
             {
                 if (status == "load")
                 {
-                    var fileName = await _messageService.ShowOpenFileDialogAsync("Select File", ".json",Tuple.Create("Json Files", "*.json")).ConfigureAwait(true);
+                    var fileName = await _messageService.ShowOpenFileDialogAsync("Select File", ".json", Tuple.Create("Json Files", "*.json")).ConfigureAwait(true);
 
                     if (string.IsNullOrWhiteSpace(fileName))
+                    {
+                        IsBusy = false;
                         return;
+                    }
                     var cfg = OriginalConfig.Load(fileName);
                     var servers = cfg.configs.Select(svc => new ImportExportVM
                     {
@@ -323,9 +373,9 @@ namespace Guldan
                 }
                 else if (status == "import")
                 {
-                    if (ImportItems?.Any()??false)
+                    if (ImportItems?.Any() ?? false)
                     {
-                        var servers =ImportItems.Where(c => c.IsSelected ?? false).Select(c => c.Data).ToArray();
+                        var servers = ImportItems.Where(c => c.IsSelected ?? false).Select(c => c.Data).ToArray();
                         var svcs = Server.ParseMultipleServers(string.Join(Environment.NewLine, servers));
                         foreach (var server in svcs)
                         {
@@ -346,10 +396,11 @@ namespace Guldan
         private ICommand _exportCommand;
         public ICommand ExportCommand => _exportCommand ?? (_exportCommand = new AsyncCommand<string>(async _ =>
         {
+            if (IsBusy) return;
             IsBusy = true;
             try
             {
-                Clipboard.SetText(string.Join(Environment.NewLine, ExportItems.Where(c=>c.IsSelected??false).Select(c => c.Data)));
+                Clipboard.SetText(string.Join(Environment.NewLine, ExportItems.Where(c => c.IsSelected ?? false).Select(c => c.Data)));
             }
             catch (Exception e)
             {
@@ -364,13 +415,15 @@ namespace Guldan
         private ICommand _curdCommand;
         public ICommand CURDCommand => _curdCommand ?? (_curdCommand = new SimpleCommand<string>(x =>
         {
+            if (IsBusy) return;
             if (string.IsNullOrEmpty(x)) return;
             switch (x)
             {
                 case "c":
                     try
                     {
-                        Server.CheckServer(SelectedServer);
+                        if (SelectedServer != null)
+                            Server.CheckServer(SelectedServer);
                         var ns = new Server();
                         Servers.Add(ns);
                         SelectedServer = ns;
@@ -381,21 +434,25 @@ namespace Guldan
                     }
                     break;
                 case "dup":
-                    //if (SelectedServer != null)
-                    //{
-                    //    //var ns = new Server(SelectedServer.GetSSUrl())
-                    //    //{
-                    //    //    server = "",
-                    //    //    remarks = SelectedServer.remarks + DateTime.Now.ToUnixTimestamp()
-                    //    //};
-                    //    //if (!Config.serverList.Contains(ns))
-                    //    //{
-                    //    //    Config.serverList.Add(ns);
-                    //    //    SelectedServer = ns;
-                    //    //}
-                    //}
+                    try
+                    {
+                        if (SelectedServer == null) return;
+                        Server.CheckServer(SelectedServer);
+                        var ns = new Server(SelectedServer?.GetSSUrl())
+                        {
+                            server = "",
+                            remarks = SelectedServer?.remarks + DateTime.Now.ToString("yyyyMMddHHmmss")
+                        };
+                        Servers.Add(ns);
+                        SelectedServer = ns;
+                    }
+                    catch (Exception e)
+                    {
+                        _messageService.ShowAsync(I18N.GetSplitString(e.Message));
+                    }
                     break;
                 case "d":
+                    if (SelectedServer == null) return;
                     if (SelectedServer.enabled)
                     {
                         _messageService.ShowAsync(I18N.GetSplitString("Please stop first"));
@@ -412,6 +469,7 @@ namespace Guldan
         private ICommand _appCommand;
         public ICommand AppCommand => _appCommand ?? (_appCommand = new SimpleCommand<string>(param =>
         {
+            if (IsBusy) return;
             if (string.IsNullOrEmpty(param)) return;
             switch (param)
             {
@@ -425,6 +483,67 @@ namespace Guldan
                     ShowMainWindow();
                     break;
             }
+        }));
+
+        private ICommand _clipBoardCommand;
+        public ICommand ClipboardCommand => _clipBoardCommand ?? (_clipBoardCommand = new AsyncCommand<string>(async param =>
+        {
+            if (IsBusy) return;
+            if (string.IsNullOrEmpty(param)) return;
+            IsBusy = true;
+            switch (param)
+            {
+                case "copytext":
+                    await TrySetClipboardAsync(SelectedServer.GetSSUrl()).ConfigureAwait(true);
+                    break;
+                case "copyimage":
+                    await TrySetClipboardAsync(SelectedServer.GetQRCode().ToBitmapSource()).ConfigureAwait(true);
+                    break;
+                case "paste":
+                    var txt = Clipboard.GetText();
+                    var prs = Server.ParseMultipleServers(txt);
+                    if (prs?.Length > 0)
+                    {
+                        if (SelectedServer != null && SelectedServer.IsDefault)
+                            Servers.Remove(SelectedServer);
+                        foreach (var server in prs)
+                        {
+                            if (!Servers.Contains(server))
+                                Servers.Add(server);
+                        }
+                        SelectedServer = prs.Last();
+                    }
+                    else
+                    {
+                        var bread = Clipboard.GetImage();
+                        if (bread == null) break;
+                        using (var bmp = BitmapFromSource(bread))
+                        {
+                            var source = new BitmapLuminanceSource(bmp);
+                            var bitmap = new BinaryBitmap(new HybridBinarizer(source));
+                            var reader = new QRCodeReader();
+                            var result = reader.decode(bitmap);
+                            if (result != null)
+                            {
+                                txt = result.Text;
+                                prs = Server.ParseMultipleServers("ss://" + txt);
+                                if (prs?.Length > 0)
+                                {
+                                    if (SelectedServer != null && SelectedServer.IsDefault)
+                                        Servers.Remove(SelectedServer);
+                                    foreach (var server in prs)
+                                    {
+                                        if (!Servers.Contains(server))
+                                            Servers.Add(server);
+                                    }
+                                    SelectedServer = prs.Last();
+                                }
+                            }
+                        }
+                    }
+                    break;
+            }
+            IsBusy = false;
         }));
         #endregion
     }
