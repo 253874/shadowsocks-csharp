@@ -149,7 +149,8 @@
                                                            Style="{StaticResource {ComponentResourceKey TypeInTargetAssembly=wpfSpark:ToggleSwitch, ResourceId=ToggleSwitch.UWP.Light.Style}}" />
                                     <TextBlock Text="{Binding DummyTitle,Mode=OneTime, Converter={StaticResource i18n}, ConverterParameter=QRCode}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="10,0,1,0" />
                                     <wpfSpark:ToggleSwitch x:Name="SwitchQR" Width="55" Height="30"
-                                                           Margin="5" HorizontalAlignment="Right" VerticalAlignment="Top" IsChecked="False"
+                                                           Margin="5" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                           IsChecked="{Binding SelectedServer.ShowQR,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
                                                            Style="{StaticResource {ComponentResourceKey TypeInTargetAssembly=wpfSpark:ToggleSwitch, ResourceId=ToggleSwitch.UWP.Light.Style}}" />
                                 </StackPanel>
                             </Grid>

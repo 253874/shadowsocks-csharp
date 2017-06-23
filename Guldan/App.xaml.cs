@@ -116,17 +116,17 @@ namespace Guldan
         {
 #if DEBUG
             string sFileName = DateTime.Now.ToString("yyyyMMdd") + ".log";
-            FileStream fs;
-            StreamWriter sw;
-            if (File.Exists(sFileName))
+            System.IO.FileStream fs;
+            System.IO.StreamWriter sw;
+            if (System.IO.File.Exists(sFileName))
             {
-                fs = new FileStream(sFileName, FileMode.Append, FileAccess.Write);
+                fs = new System.IO.FileStream(sFileName, System.IO.FileMode.Append, System.IO.FileAccess.Write);
             }
             else
             {
-                fs = new FileStream(sFileName, FileMode.Create, FileAccess.Write);
+                fs = new System.IO.FileStream(sFileName, System.IO.FileMode.Create, System.IO.FileAccess.Write);
             }
-            sw = new StreamWriter(fs);
+            sw = new System.IO.StreamWriter(fs);
             sw.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss") + "   ---   " + strLog);
             sw.Close();
             fs.Close();

@@ -60,6 +60,9 @@ namespace Guldan.Models
         private bool _okay;
         [SimpleJson.Ignore]
         public bool Okay { get => _okay; set { _okay = value; OnPropertyChanged(); } }
+        private bool _showQR;
+        [SimpleJson.Ignore]
+        public bool ShowQR { get => _showQR; set { _showQR = value; GenerateQR(); OnPropertyChanged(); } }
         private BitmapImage _qrCode;
         [SimpleJson.Ignore]
         public BitmapImage QRCode { get => _qrCode; set { _qrCode = value; OnPropertyChanged(); } }
@@ -94,18 +97,25 @@ namespace Guldan.Models
                 CheckPort(server_port);
                 CheckPassword(password);
                 CheckMethod(method);
-                using (var bitmap = GetQRCode())
-                using (var memory = new MemoryStream())
+                if (ShowQR)
                 {
-                    bitmap.Save(memory, System.Drawing.Imaging.ImageFormat.Png);
-                    memory.Position = 0;
+                    using (var bitmap = GetQRCode())
+                    using (var memory = new MemoryStream())
+                    {
+                        bitmap.Save(memory, System.Drawing.Imaging.ImageFormat.Png);
+                        memory.Position = 0;
 
-                    var bitmapImage = new BitmapImage();
-                    bitmapImage.BeginInit();
-                    bitmapImage.StreamSource = memory;
-                    bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
-                    bitmapImage.EndInit();
-                    QRCode = bitmapImage;
+                        var bitmapImage = new BitmapImage();
+                        bitmapImage.BeginInit();
+                        bitmapImage.StreamSource = memory;
+                        bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                        bitmapImage.EndInit();
+                        QRCode = bitmapImage;
+                    }
+                }
+                else
+                {
+                    QRCode = null;
                 }
                 Okay = true;
             }
@@ -169,6 +179,7 @@ namespace Guldan.Models
             else
             {
                 warlock?.Stop();
+                warlock?.Dispose();
                 started = false;
             }
         }
