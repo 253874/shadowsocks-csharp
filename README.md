@@ -1,5 +1,5 @@
 # Preview
-![Warlock](https://api.pzhacm.org/iivb/sf01.png)
+![Warlock](Guldan/preview.png)
 
 #### 警告：本仓库的代码可能会让部分科学家产生不适
 
